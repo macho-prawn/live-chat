@@ -1,0 +1,35 @@
+{
+  "name": "live-chat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --host 0.0.0.0 --port 8083",
+    "build": "astro build",
+    "preview": "astro preview --host 0.0.0.0 --port 8083",
+    "start": "node ./dist/server/entry.mjs",
+    "docker:start": "node ./scripts/docker-start.mjs",
+    "check": "astro check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node ./scripts/apply-migrations.mjs",
+    "db:init": "node ./scripts/ensure-lobby.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^10.0.0",
+    "@tailwindcss/vite": "^4.1.12",
+    "alpinejs": "^3.14.9",
+    "astro": "^6.0.0",
+    "drizzle-orm": "^0.44.5",
+    "htmx-ext-sse": "^2.2.4",
+    "htmx.org": "^2.0.7",
+    "pg": "^8.16.3",
+    "tailwindcss": "^4.1.12",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.4",
+    "typescript": "^5.9.2"
+  }
+}

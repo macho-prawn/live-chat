@@ -1,0 +1,15 @@
+---
+type Props = {
+  html: string;
+};
+
+const { html } = Astro.props;
+---
+
+<div
+  id="presence-list"
+  class="rounded-3xl border border-slate-800/80 bg-slate-950/80 p-5"
+  sse-swap="presence"
+  hx-swap="innerHTML"
+  set:html={html}
+/>

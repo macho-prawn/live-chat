@@ -1,0 +1,17 @@
+---
+import type { Message } from '../../lib/server/schema';
+import { renderHistoryRegion, renderMessageItems } from '../../lib/server/render';
+
+type Props = {
+  roomId: number;
+  messages: Message[];
+  nextCursor: string | null;
+};
+
+const { roomId, messages, nextCursor } = Astro.props;
+---
+
+<div class="flex h-full flex-col">
+  <div id="history-region" set:html={renderHistoryRegion(roomId, nextCursor)} />
+  <ul id="message-list" class="space-y-1.5" sse-swap="message" hx-swap="beforeend scroll:bottom" set:html={renderMessageItems(messages)} />
+</div>

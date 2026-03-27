@@ -1,0 +1,221 @@
+---
+import MessageTimeline from '../../components/chat/MessageTimeline.astro';
+import RoomSidebar from '../../components/chat/RoomSidebar.astro';
+import AppLayout from '../../layouts/AppLayout.astro';
+import { requireBrowserSession, requireNickname } from '../../lib/server/cookies';
+import { getLatestRoomState, getMessagePage, getProfile, getRoomById, getRoomList } from '../../lib/server/chat-service';
+
+const nickname = requireNickname(Astro);
+const browserSession = requireBrowserSession(Astro);
+if (!nickname || !browserSession) {
+  return Astro.redirect('/nickname');
+}
+
+const roomId = Number(Astro.params.id);
+if (!Number.isFinite(roomId)) {
+  return new Response('Not found', { status: 404 });
+}
+
+const [room, rooms, history, liveState, profile] = await Promise.all([
+  getRoomById(roomId),
+  getRoomList(),
+  getMessagePage(roomId),
+  getLatestRoomState(roomId),
+  getProfile(browserSession, nickname),
+]);
+---
+
+<AppLayout title={`${room.name} · Live Chat`} authenticated={true} lockViewport={true}>
+  <main
+    class="mx-auto flex h-full min-h-0 max-w-[1200px] flex-1 overflow-hidden px-3 py-3 sm:px-5 lg:px-6"
+    x-data={`liveChatCreateRoomController(${JSON.stringify({
+      roomId,
+      nickname,
+      nicknameColor: profile.nicknameColor,
+      profileUpdatePath: '/api/profile',
+      presenceJoinPath: `/rooms/${roomId}/presence/join`,
+      presenceLeavePath: `/rooms/${roomId}/presence/leave`,
+      typingPath: `/rooms/${roomId}/typing`,
+    })})`}
+    x-init="init()"
+    x-on:htmx:sse-message.window="handleSseSwap($event)"
+  >
+    <div
+      x-ref="sseRoot"
+      hx-ext="sse"
+      sse-connect={`/rooms/${roomId}/stream`}
+      class="grid h-full min-h-0 w-full gap-3 overflow-hidden lg:grid-cols-[224px_minmax(0,1fr)]"
+      :style="sidebarGridStyle()"
+    >
+      <aside
+        class="sidebar-shell app-panel-strong fixed inset-y-0 left-0 z-30 w-72 max-w-[80vw] -translate-x-full overflow-y-auto p-5 transition duration-200 lg:static lg:h-full lg:w-auto lg:max-w-none lg:translate-x-0 lg:rounded-[1.5rem]"
+        :class="{ 'translate-x-0': sidebarOpen }"
+        x-bind:data-sidebar-collapsed="sidebarCollapsed ? 'true' : 'false'"
+      >
+        <RoomSidebar rooms={rooms} activeRoomId={room.id} />
+      </aside>
+
+      <section class="app-panel flex h-full min-h-0 flex-col rounded-[1.5rem]">
+        <header class="shrink-0 flex flex-col gap-3 border-b px-4 py-4 lg:flex-row lg:items-start lg:justify-between" style="border-color: var(--border-color);">
+          <div class="min-w-0">
+            <div class="flex items-center gap-3">
+              <button
+                type="button"
+                class="app-surface inline-flex size-10 items-center justify-center rounded-xl app-subtext lg:hidden"
+                x-on:click="sidebarOpen = !sidebarOpen"
+              >
+                <span class="sr-only">Toggle room navigation</span>
+                <span class="text-lg">☰</span>
+              </button>
+              <div>
+                <p class="app-eyebrow text-xs uppercase tracking-[0.3em]">Room</p>
+                <h1 class="mt-1 text-xl font-semibold app-text">{room.name}</h1>
+              </div>
+            </div>
+            <p class="app-muted mt-2 max-w-2xl text-sm">{room.description ?? 'The default place to talk in real time.'}</p>
+          </div>
+
+          <div class="flex flex-wrap items-start justify-end gap-2 lg:min-w-[26rem]">
+            <div class="relative" x-on:click.outside="activityOpen = false">
+              <div id="activity-card" sse-swap="activity" hx-swap="innerHTML" set:html={liveState.activityHtml}></div>
+            </div>
+
+            <div class="relative" x-on:click.outside="profileEditorOpen = false">
+              <button
+                type="button"
+                class="app-card flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+                x-on:click="toggleProfileEditor()"
+              >
+                <span class="inline-flex size-3 rounded-full border" :style="`background:${nicknameColor}; border-color:${nicknameColor};`"></span>
+                <span class="min-w-0">
+                  <span class="app-faint block text-xs uppercase tracking-[0.25em]">You</span>
+                  <span class="mt-1 block text-sm font-semibold" :style="`color:${nicknameColor}`" x-text="nickname"></span>
+                </span>
+              </button>
+
+              <div
+                x-cloak
+                x-show="profileEditorOpen"
+                x-transition:enter="transform transition ease-out duration-150"
+                x-transition:enter-start="translate-y-2 opacity-0"
+                x-transition:enter-end="translate-y-0 opacity-100"
+                x-transition:leave="transform transition ease-in duration-120"
+                x-transition:leave-start="translate-y-0 opacity-100"
+                x-transition:leave-end="translate-y-2 opacity-0"
+                class="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-72 max-w-[calc(100vw-2rem)]"
+              >
+                <form class="app-panel-strong rounded-[1.25rem] p-4 backdrop-blur-xl space-y-3" x-on:submit.prevent="submitProfileUpdate($event)">
+                  <div>
+                    <p class="app-eyebrow text-[11px] uppercase tracking-[0.25em]">Profile</p>
+                    <h3 class="mt-1 text-base font-semibold app-text">Update nickname</h3>
+                  </div>
+
+                  <label class="block">
+                    <span class="app-subtext mb-2 block text-sm font-medium">Nickname</span>
+                    <input
+                      type="text"
+                      name="nickname"
+                      maxlength="24"
+                      class="app-input w-full rounded-xl px-3 py-2.5 text-sm transition"
+                      x-model="profileDraftNickname"
+                      required
+                    />
+                  </label>
+
+                  <label class="block">
+                    <span class="app-subtext mb-2 block text-sm font-medium">Nickname color</span>
+                    <input
+                      type="color"
+                      name="nicknameColor"
+                      class="app-input h-10 w-full rounded-xl px-2 py-1"
+                      x-model="profileDraftColor"
+                      required
+                    />
+                  </label>
+
+                  <div class="flex items-center justify-end gap-2">
+                    <button type="button" class="app-theme-toggle rounded-xl px-3 py-2 text-sm font-semibold" x-on:click="profileEditorOpen = false">
+                      Cancel
+                    </button>
+                    <button type="submit" class="app-primary-button rounded-xl px-3 py-2 text-sm font-semibold" x-bind:disabled="profileSaving">
+                      Save
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="relative" x-on:click.outside="presenceOpen = false">
+              <div id="presence-card" sse-swap="presence" hx-swap="innerHTML" set:html={liveState.presenceHtml}></div>
+            </div>
+          </div>
+        </header>
+
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="min-h-0 flex-1 px-4 pt-4 pb-6 sm:px-5">
+            <div class="chat-viewport-frame grid h-full min-h-0 overflow-hidden p-1">
+              <div x-ref="messageViewport" class="chat-viewport-scroll min-h-0 overflow-y-auto rounded-[calc(1rem-4px)] px-3 py-3 sm:px-4">
+                <MessageTimeline roomId={room.id} messages={history.messages} nextCursor={history.nextCursor} />
+              </div>
+            </div>
+          </div>
+
+          <div class="shrink-0 border-t px-4 py-3 sm:px-5" style="border-color: var(--border-color);">
+            <div id="typing-indicator" class="app-muted min-h-5 text-sm" sse-swap="typing" hx-swap="innerHTML" set:html={liveState.typingHtml}></div>
+
+            <form
+              x-ref="composerForm"
+              action={`/rooms/${room.id}/messages`}
+              method="POST"
+              hx-post={`/rooms/${room.id}/messages`}
+              hx-on::after-request="window.liveChatRoom?.handleComposerAfterRequest(event)"
+              class="mt-2 space-y-2"
+            >
+              <div class="relative" x-on:click.outside="closeMentionPicker()">
+                <textarea
+                  x-ref="messageInput"
+                  name="body"
+                  rows="2"
+                  maxlength="2000"
+                  placeholder={`Message #${room.name}`}
+                  x-on:input="handleComposerInput($event)"
+                  x-on:keydown="handleComposerKeydown($event)"
+                  class="app-input w-full rounded-[1.25rem] px-4 py-3 text-sm leading-6 transition"
+                  required
+                ></textarea>
+
+                <div
+                  x-cloak
+                  x-show="mentionOpen"
+                  class="mention-picker absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 rounded-[1.25rem] p-2"
+                >
+                  <template x-for="(candidate, index) in mentionResults" :key="candidate">
+                    <button
+                      type="button"
+                      class="mention-picker-row flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition"
+                      x-bind:class="{ 'is-active': index === mentionActiveIndex }"
+                      x-on:click="selectMention(candidate)"
+                    >
+                      <span class="font-medium" x-text="candidate"></span>
+                      <span class="app-faint text-xs uppercase tracking-[0.16em]">@mention</span>
+                    </button>
+                  </template>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3">
+                <button
+                  type="submit"
+                  class="app-primary-button inline-flex shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</AppLayout>

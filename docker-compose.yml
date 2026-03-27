@@ -1,0 +1,68 @@
+services:
+  live-chat-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB_FILE: /run/secrets/db_name
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+    user: "${DB_UID}:${DB_GID}"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$$(cat /run/secrets/db_user)\" -d \"$$(cat /run/secrets/db_name)\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  live-chat-app:
+    image: live-chat-app:latest
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: ${FRONTEND_PORT}
+      HOST: ${HOST}
+      APP_ORIGIN: ${APP_ORIGIN}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME_FILE: /run/secrets/db_name
+      DB_USER_FILE: /run/secrets/db_user
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      NICKNAME_COOKIE_NAME: ${NICKNAME_COOKIE_NAME}
+    secrets:
+      - db_name
+      - db_user
+      - db_password
+    depends_on:
+      live-chat-db:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+
+volumes:
+  pg_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DB_VOLUME}
+
+secrets:
+  db_name:
+    file: ${DB_NAME}
+  db_user:
+    file: ${DB_USER}
+  db_password:
+    file: ${DB_PASSWORD}

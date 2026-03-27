@@ -1,0 +1,60 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import { getNickname } from '../lib/server/cookies';
+import { ensureLobbyRoom } from '../lib/server/chat-service';
+
+const existingNickname = getNickname(Astro.cookies);
+
+if (existingNickname) {
+  const lobby = await ensureLobbyRoom();
+  return Astro.redirect(`/rooms/${lobby.id}`);
+}
+---
+
+<AppLayout title="Choose a nickname">
+  <main class="mx-auto flex min-h-screen max-w-5xl items-center px-5 py-10">
+    <section class="grid w-full gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+      <div class="app-panel rounded-[1.5rem] p-7 lg:p-9">
+        <p class="app-eyebrow text-xs uppercase tracking-[0.35em]">Live chat</p>
+        <h1 class="mt-4 text-3xl font-semibold tracking-tight app-text lg:text-4xl">Pick a nickname and join the Lobby.</h1>
+        <p class="app-muted mt-4 max-w-xl text-base leading-7">
+          Multi-room chat built with Astro SSR, HTMX, Alpine, SSE, and PostgreSQL. No account system, just a session nickname and a live room.
+        </p>
+      </div>
+
+      <div class="app-panel-strong rounded-[1.5rem] p-7">
+        <div class="mb-6">
+          <h2 class="text-xl font-semibold app-text">Enter the app</h2>
+          <p class="app-muted mt-2 text-sm">Your nickname stays active for this browser session and clears when the browser closes.</p>
+        </div>
+
+        <form
+          action="/api/nickname"
+          method="POST"
+          hx-post="/api/nickname"
+          class="space-y-4"
+        >
+          <label class="block">
+            <span class="app-subtext mb-2 block text-sm font-medium">Nickname</span>
+            <input
+              type="text"
+              name="nickname"
+              maxlength="24"
+              placeholder="e.g. neon-otter"
+              class="app-input w-full rounded-xl px-4 py-3 text-sm transition"
+              autocomplete="nickname"
+              required
+            />
+          </label>
+
+          <button
+            type="submit"
+            class="app-primary-button inline-flex w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition"
+          >
+            Continue to chat
+          </button>
+        </form>
+      </div>
+    </section>
+  </main>
+</AppLayout>

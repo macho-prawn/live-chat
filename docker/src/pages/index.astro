@@ -1,0 +1,12 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+import { getNickname } from '../lib/server/cookies';
+import { ensureLobbyRoom } from '../lib/server/chat-service';
+
+const nickname = getNickname(Astro.cookies);
+const lobby = await ensureLobbyRoom();
+
+return Astro.redirect(nickname ? `/rooms/${lobby.id}` : '/nickname');
+---
+
+<AppLayout title="Redirecting..." />
