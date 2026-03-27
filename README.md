@@ -22,11 +22,11 @@ The main room screen combines persistent message history with live SSE updates f
 ### Nickname Entry
 The entry flow is intentionally lightweight: users choose a nickname, receive a browser-session cookie pair, and are redirected into the Lobby. Nickname ownership is protected against active conflicts, while user profile color and room activity history remain persisted.
 
-### Light Scheme
-![light-scheme](images/live-chat-light-scheme.png)
+### Light Mode
+![light-mode](images/live-chat-light-mode.png)
 
-### Dark Scheme
-![dark-scheme](images/live-chat-dark-scheme.png)
+### Dark Mode
+![dark-mode](images/live-chat-dark-mode.png)
 
 [Back to top](#top)
 
