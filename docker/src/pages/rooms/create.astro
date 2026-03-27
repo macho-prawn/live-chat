@@ -1,0 +1,60 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { requireNickname } from '../../lib/server/cookies';
+
+const nickname = requireNickname(Astro);
+if (!nickname) {
+  return Astro.redirect('/nickname');
+}
+---
+
+<AppLayout title="Create a room" authenticated={true}>
+  <main class="mx-auto min-h-screen max-w-2xl px-5 py-8">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <p class="app-eyebrow text-xs uppercase tracking-[0.3em]">Create room</p>
+        <h1 class="mt-2 text-2xl font-semibold app-text">Start a new conversation space</h1>
+      </div>
+      <a href="/" class="app-link text-sm transition">Back to Lobby</a>
+    </div>
+
+    <section class="app-panel rounded-[1.5rem] p-7">
+      <form
+        action="/api/rooms"
+        method="POST"
+        hx-post="/api/rooms"
+        class="space-y-5"
+      >
+        <label class="block">
+          <span class="app-subtext mb-2 block text-sm font-medium">Room name</span>
+          <input
+            type="text"
+            name="name"
+            maxlength="40"
+            placeholder="Design Critique"
+            class="app-input w-full rounded-xl px-4 py-3 text-sm transition"
+            required
+          />
+        </label>
+
+        <label class="block">
+          <span class="app-subtext mb-2 block text-sm font-medium">Description</span>
+          <textarea
+            name="description"
+            rows="4"
+            maxlength="160"
+            placeholder="What is this room for?"
+            class="app-input w-full rounded-xl px-4 py-3 text-sm transition"
+          ></textarea>
+        </label>
+
+        <button
+          type="submit"
+          class="app-primary-button inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+        >
+          Create room
+        </button>
+      </form>
+    </section>
+  </main>
+</AppLayout>

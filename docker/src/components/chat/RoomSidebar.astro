@@ -1,0 +1,55 @@
+---
+import type { Room } from '../../lib/server/schema';
+import { renderRoomsNav } from '../../lib/server/render';
+
+type Props = {
+  rooms: Room[];
+  activeRoomId: number;
+};
+
+const { rooms, activeRoomId } = Astro.props;
+---
+
+<div class="flex h-full flex-col gap-6">
+  <div>
+    <div class="flex items-start justify-between gap-3">
+      <div class="sidebar-copy min-w-0">
+        <p class="app-eyebrow text-xs uppercase tracking-[0.3em]">Rooms</p>
+        <h2 class="mt-2 text-xl font-semibold app-text">Live Chat</h2>
+      </div>
+
+      <div class="sidebar-header-actions flex shrink-0 flex-col items-end gap-2 self-start">
+        <button
+          type="button"
+          class="app-theme-toggle inline-flex min-w-7 max-w-full items-center justify-center rounded-full px-1.5 py-1 text-[10px] leading-none font-semibold transition"
+          x-on:click="window.liveChatToggleTheme?.()"
+          aria-label="Toggle theme"
+          title="Toggle theme"
+          data-theme-toggle-label
+        >
+          💡
+        </button>
+
+        <button
+          type="button"
+          class="app-theme-toggle hidden min-w-8 max-w-full items-center justify-center rounded-full px-1.5 py-1 text-[10px] leading-none font-semibold transition lg:inline-flex"
+          x-on:click="window.liveChatRoom?.toggleSidebarCollapse()"
+          aria-label="Collapse rooms panel"
+          title="Collapse rooms panel"
+        >
+          <span x-text="sidebarCollapsed ? '>>' : '<<'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <a
+    href="/rooms/create"
+    class="app-primary-button inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+  >
+    <span class="inline-flex size-5 items-center justify-center text-base leading-none">+</span>
+    <span class="sidebar-create-label ml-2">Create room</span>
+  </a>
+
+  <nav id="room-nav" class="space-y-3" sse-swap="rooms" hx-swap="innerHTML" set:html={renderRoomsNav(rooms, activeRoomId)} />
+</div>
